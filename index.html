@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FireGuard | Dual Building Monitor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans">
+
+    <header class="bg-gray-800 border-b border-gray-700 p-6 shadow-xl">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-red-500 tracking-tight">FIREGUARD <span class="text-gray-400 font-light text-sm ml-2">v2.0 Professional</span></h1>
+            <div id="system-status" class="px-4 py-1 rounded-full bg-green-900 text-green-400 text-xs font-bold animate-pulse">SYSTEM LIVE</div>
+        </div>
+    </header>
+
+    <main class="container mx-auto p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+        
+        <div id="card-Building_1" class="bg-gray-800 rounded-2xl p-8 border border-gray-700 transition-all duration-500 shadow-lg">
+            <div class="flex justify-between items-start mb-6">
+                <h2 class="text-3xl font-bold uppercase tracking-widest text-gray-400">Building 01</h2>
+                <div id="status-icon-Building_1" class="h-4 w-4 rounded-full bg-gray-500"></div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-gray-900 p-4 rounded-xl">
+                    <p class="text-xs text-gray-500 uppercase font-bold mb-1">Smoke Level</p>
+                    <p id="smoke-Building_1" class="text-4xl font-mono text-blue-400">---</p>
+                </div>
+                <div id="fire-bg-Building_1" class="bg-gray-900 p-4 rounded-xl transition-colors duration-300">
+                    <p class="text-xs text-gray-500 uppercase font-bold mb-1">Fire Status</p>
+                    <p id="fire-Building_1" class="text-xl font-bold">WAITING...</p>
+                </div>
+            </div>
+
+            <div class="mt-6 pt-6 border-t border-gray-700 space-y-2">
+                <p class="text-sm flex justify-between"><span class="text-gray-500">Last Pulse:</span> <span id="time-Building_1">--:--:--</span></p>
+                <p class="text-sm flex justify-between"><span class="text-gray-500">Connection:</span> <span id="conn-Building_1" class="text-yellow-500 font-bold italic">Checking...</span></p>
+            </div>
+        </div>
+
+        <div id="card-Building_2" class="bg-gray-800 rounded-2xl p-8 border border-gray-700 transition-all duration-500 shadow-lg">
+            <div class="flex justify-between items-start mb-6">
+                <h2 class="text-3xl font-bold uppercase tracking-widest text-gray-400">Building 02</h2>
+                <div id="status-icon-Building_2" class="h-4 w-4 rounded-full bg-gray-500"></div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-gray-900 p-4 rounded-xl">
+                    <p class="text-xs text-gray-500 uppercase font-bold mb-1">Smoke Level</p>
+                    <p id="smoke-Building_2" class="text-4xl font-mono text-blue-400">---</p>
+                </div>
+                <div id="fire-bg-Building_2" class="bg-gray-900 p-4 rounded-xl transition-colors duration-300">
+                    <p class="text-xs text-gray-500 uppercase font-bold mb-1">Fire Status</p>
+                    <p id="fire-Building_2" class="text-xl font-bold">WAITING...</p>
+                </div>
+            </div>
+
+            <div class="mt-6 pt-6 border-t border-gray-700 space-y-2">
+                <p class="text-sm flex justify-between"><span class="text-gray-500">Last Pulse:</span> <span id="time-Building_2">--:--:--</span></p>
+                <p class="text-sm flex justify-between"><span class="text-gray-500">Connection:</span> <span id="conn-Building_2" class="text-yellow-500 font-bold italic">Checking...</span></p>
+            </div>
+        </div>
+
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        // --- REPLACE THIS WITH YOUR FIREBASE CONFIG ---
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            databaseURL: "fire-detector-8c8bd-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "fire-detector-8c8bd",
+            appId: "YOUR_APP_ID"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        const buildings = ["Building_1", "Building_2"];
+
+        buildings.forEach(id => {
+            const buildingRef = ref(db, '/' + id);
+            
+            onValue(buildingRef, (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    updateUI(id, data);
+                }
+            });
+        });
+
+        function updateUI(id, data) {
+            const smokeEl = document.getElementById(`smoke-${id}`);
+            const fireEl = document.getElementById(`fire-${id}`);
+            const fireBg = document.getElementById(`fire-bg-${id}`);
+            const timeEl = document.getElementById(`time-${id}`);
+            const connEl = document.getElementById(`conn-${id}`);
+            const statusIcon = document.getElementById(`status-icon-${id}`);
+            const card = document.getElementById(`card-${id}`);
+
+            // Update Smoke
+            smokeEl.innerText = data.smoke || 0;
+            
+            // Update Fire Status
+            if (data.fire === true) {
+                fireEl.innerText = "🔥 FIRE DETECTED";
+                fireEl.className = "text-xl font-bold text-white animate-bounce";
+                fireBg.className = "bg-red-600 p-4 rounded-xl";
+                card.classList.add("ring-4", "ring-red-600");
+            } else {
+                fireEl.innerText = "SAFE";
+                fireEl.className = "text-xl font-bold text-green-400";
+                fireBg.className = "bg-gray-900 p-4 rounded-xl";
+                card.classList.remove("ring-4", "ring-red-600");
+            }
+
+            // Update Time using Moment.js
+            if (data.last_seen) {
+                timeEl.innerText = moment(data.last_seen).format('hh:mm:ss A');
+                
+                // Watchdog Check (Frontend)
+                const diff = Date.now() - data.last_seen;
+                if (diff > 30000) { // 30 seconds
+                    connEl.innerText = "OFFLINE";
+                    connEl.className = "text-red-500 font-bold underline italic";
+                    statusIcon.className = "h-4 w-4 rounded-full bg-red-500 shadow-[0_0_10px_red]";
+                } else {
+                    connEl.innerText = "HEALTHY";
+                    connEl.className = "text-green-500 font-bold italic";
+                    statusIcon.className = "h-4 w-4 rounded-full bg-green-500 shadow-[0_0_10px_green]";
+                }
+            }
+        }
+    </script>
+</body>
+</html>
